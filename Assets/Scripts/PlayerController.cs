@@ -1,42 +1,34 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Settings")]
-    [SerializeField] float maxSpeed = 15f;
+    [Header("Configurações de Movimento")]
+    [SerializeField] float velocidadeMovimento = 10f;
 
-    Rigidbody2D physics = null;
+    Rigidbody2D rb2D = null;
 
     void Awake()
     {
-        physics = GetComponent<Rigidbody2D>();
+        rb2D = GetComponent<Rigidbody2D>();
     }
 
     void Update()
     {
-        Vector3 input = new Vector3
-         (
-             x: Input.GetAxis("Horizontal"),
-             y: Input.GetAxis("Vertical"),
-             z: 0.0f
-         );
+        Vector3 movimentoEntrada = new Vector3
+        (
+            x: Input.GetAxis("Horizontal"),
+            y: Input.GetAxis("Vertical"),
+            z: 0.0f
+        );
 
-        if (input != Vector3.zero)
+        if (movimentoEntrada != Vector3.zero)
         {
-            physics.velocity = input.normalized * maxSpeed /* * Time.deltaTime*/;
+            rb2D.velocity = movimentoEntrada.normalized * velocidadeMovimento;
         }
         else
         {
-            physics.velocity = new Vector3(0, 0, 0); //Vector3.zero
+            rb2D.velocity = Vector3.zero;
         }
-        //else
-        //{
-        //    var targetPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        //    targetPosition.z = 0f;
-        //    input = targetPosition - transform.position;
-
-        //    physics.velocity = input.normalized * maxSpeed;
-        //}
     }
 }
