@@ -1,57 +1,41 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
 public class CameraController : MonoBehaviour
 {
-    [Header("Settings")]
-    [SerializeField] float smoothFactor = 1f;
+    [Header("Configurações")]
+    [SerializeField] float taxaSuavizacao = 1f;
 
-    // List<Transform> targets = null;
-    Transform playerTarget = null;
-
-    Camera cam = null;
+    Transform alvoJogador = null;
+    Camera cameraPrincipal = null;
 
     void LateUpdate()
     {
-        if (playerTarget == null)
+        if (alvoJogador == null)
             return;
 
-        // int count = targets.Count;
-        // Vector3 center = Vector3.zero;
-        // Bounds bounds = new Bounds();
-
-        // foreach (var t in targets)
-        // {
-        //     center += t.position;
-        //     bounds.Encapsulate(t.position);
-        // }
-        // center /= count;
-        Vector3 center = playerTarget.position;
-        center = new Vector3
+        Vector3 posicaoCentral = alvoJogador.position;
+        posicaoCentral = new Vector3
         (
-            x: center.x,
-            y: center.y,
+            x: posicaoCentral.x,
+            y: posicaoCentral.y,
             z: -10f
         );
-        // var cameraSize = Mathf.Max(bounds.size.x, bounds.size.y) / 2;
 
-        transform.position = Vector3.Lerp(transform.position, center, smoothFactor);
-        // cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, cameraSize, smoothFactor);
+        transform.position = Vector3.Lerp(transform.position, posicaoCentral, taxaSuavizacao);
     }
 
     void Start()
     {
-        // targets = new List<Transform>(GameObject.FindObjectsOfType<SteeringActor>().Select(sa => sa.transform));
-        // targets.AddRange(GameObject.FindObjectsOfType<PlayerController>().Select(pc => pc.transform));
-        var player = GameObject.FindObjectOfType<PlayerController>();
-        if (player != null)
+        var jogador = GameObject.FindObjectOfType<PlayerController>();
+        if (jogador != null)
         {
-            playerTarget = player.transform;
+            alvoJogador = jogador.transform;
         }
     }
 
     void Awake()
     {
-        cam = GetComponent<Camera>();
+        cameraPrincipal = GetComponent<Camera>();
     }
 }
