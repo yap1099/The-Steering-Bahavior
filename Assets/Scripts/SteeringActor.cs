@@ -1,174 +1,174 @@
-﻿using UnityEngine.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
-enum Behavior { Idle, Seek, Evade }
-enum State { Idle, Arrive, Seek, Evade }
+enum Comportamento { Ocioso, Procurar, Fugir }
+enum Estado { Ocioso, Chegar, Procurar, Fugir }
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class SteeringActor : MonoBehaviour
 {
-    [Header("Settings")]
-    [SerializeField] Behavior behavior = Behavior.Seek;
-    [SerializeField] Transform target = null;
-    [SerializeField] float maxSpeed = 5f;
-    [SerializeField, Range(0.1f, 0.99f)] float decelerationFactor = 0.75f;
-    [SerializeField] float arriveRadius = 1.2f;
-    [SerializeField] float stopRadius = 0.5f;
-    [SerializeField] float evadeRadius = 5f;
-    [SerializeField] float avoidDistance = 2f;
-    [SerializeField] float contourDistance = 2f;
-    [SerializeField] float contourAngleStep = 10f;
-    [SerializeField] LayerMask wallLayer;
+    [Header("Configurações")]
+    [SerializeField] Comportamento acao = Comportamento.Procurar;
+    [SerializeField] Transform objetivo = null;
+    [SerializeField] float velocidadeLimite = 5f;
+    [SerializeField, Range(0.1f, 0.99f)] float fatorReducao = 0.75f;
+    [SerializeField] float raioChegada = 1.2f;
+    [SerializeField] float raioParada = 0.5f;
+    [SerializeField] float raioFuga = 5f;
+    [SerializeField] float distanciaDesvio = 2f;
+    [SerializeField] float distanciaCircundar = 2f;
+    [SerializeField] float anguloEtapaCircundar = 10f;
+    [SerializeField] LayerMask camadaObstaculo;
 
-    Text behaviorDisplay = null;
-    Rigidbody2D physics;
-    State state = State.Idle;
+    Text exibicaoAcao = null;
+    Rigidbody2D corpoFisico;
+    Estado situacao = Estado.Ocioso;
 
     void Update()
     {
-        if (target != null)
+        if (objetivo != null)
         {
-            switch (behavior)
+            switch (acao)
             {
-                case Behavior.Idle: IdleBehavior(); break;
-                case Behavior.Seek: SeekBehavior(); break;
-                case Behavior.Evade: EvadeBehavior(); break;
+                case Comportamento.Ocioso: AcaoOciosa(); break;
+                case Comportamento.Procurar: AcaoProcurar(); break;
+                case Comportamento.Fugir: AcaoFugir(); break;
             }
         }
 
-        physics.velocity = Vector2.ClampMagnitude(physics.velocity, maxSpeed);
+        corpoFisico.velocity = Vector2.ClampMagnitude(corpoFisico.velocity, velocidadeLimite);
 
-        if (behaviorDisplay != null)
+        if (exibicaoAcao != null)
         {
-            behaviorDisplay.text = state.ToString().ToUpper();
+            exibicaoAcao.text = situacao.ToString().ToUpper();
         }
     }
 
-    void IdleBehavior()
+    void AcaoOciosa()
     {
-        physics.velocity *= decelerationFactor;
+        corpoFisico.velocity *= fatorReducao;
     }
 
-    void SeekBehavior()
+    void AcaoProcurar()
     {
-        Vector2 delta = target.position - transform.position;
-        Vector2 steering = delta.normalized * maxSpeed - physics.velocity;
-        float distance = delta.magnitude;
+        Vector2 delta = objetivo.position - transform.position;
+        Vector2 direcao = delta.normalized * velocidadeLimite - corpoFisico.velocity;
+        float distancia = delta.magnitude;
 
-        if (distance < stopRadius)
+        if (distancia < raioParada)
         {
-            state = State.Idle;
+            situacao = Estado.Ocioso;
         }
-        else if (distance < arriveRadius)
+        else if (distancia < raioChegada)
         {
-            state = State.Arrive;
+            situacao = Estado.Chegar;
         }
         else
         {
-            state = State.Seek;
+            situacao = Estado.Procurar;
         }
 
-        switch (state)
+        switch (situacao)
         {
-            case State.Idle:
-                IdleBehavior();
+            case Estado.Ocioso:
+                AcaoOciosa();
                 break;
-            case State.Arrive:
-                var arriveFactor = 0.01f + (distance - stopRadius) / (arriveRadius - stopRadius);
-                physics.velocity += arriveFactor * steering * Time.fixedDeltaTime;
+            case Estado.Chegar:
+                float fatorChegada = 0.01f + (distancia - raioParada) / (raioChegada - raioParada);
+                corpoFisico.velocity += fatorChegada * direcao * Time.fixedDeltaTime;
                 break;
-            case State.Seek:
-                physics.velocity += steering * Time.fixedDeltaTime;
+            case Estado.Procurar:
+                corpoFisico.velocity += direcao * Time.fixedDeltaTime;
                 break;
         }
 
-        ContourWalls();
+        CircundarObstaculos();
     }
 
-    void EvadeBehavior()
+    void AcaoFugir()
     {
-        Vector2 delta = target.position - transform.position;
-        Vector2 steering = delta.normalized * maxSpeed - physics.velocity;
-        float distance = delta.magnitude;
+        Vector2 delta = objetivo.position - transform.position;
+        Vector2 direcao = delta.normalized * velocidadeLimite - corpoFisico.velocity;
+        float distancia = delta.magnitude;
 
-        if (distance > evadeRadius)
+        if (distancia > raioFuga)
         {
-            state = State.Idle;
+            situacao = Estado.Ocioso;
         }
         else
         {
-            state = State.Evade;
+            situacao = Estado.Fugir;
         }
 
-        switch (state)
+        switch (situacao)
         {
-            case State.Idle:
-                IdleBehavior();
+            case Estado.Ocioso:
+                AcaoOciosa();
                 break;
-            case State.Evade:
-                physics.velocity -= steering * Time.fixedDeltaTime;
+            case Estado.Fugir:
+                corpoFisico.velocity -= direcao * Time.fixedDeltaTime;
                 break;
         }
 
-        ContourWalls();
+        CircundarObstaculos();
     }
 
-    void ContourWalls()
+    void CircundarObstaculos()
     {
-        Vector2 moveDirection = physics.velocity.normalized;
+        Vector2 direcaoMovimento = corpoFisico.velocity.normalized;
 
-        Vector2 rightContour = Quaternion.AngleAxis(-contourAngleStep, Vector3.forward) * moveDirection;
-        Vector2 leftContour = Quaternion.AngleAxis(contourAngleStep, Vector3.forward) * moveDirection;
+        Vector2 contornoDireita = Quaternion.AngleAxis(-anguloEtapaCircundar, Vector3.forward) * direcaoMovimento;
+        Vector2 contornoEsquerda = Quaternion.AngleAxis(anguloEtapaCircundar, Vector3.forward) * direcaoMovimento;
 
-        RaycastHit2D hitRight = Physics2D.Raycast(transform.position, rightContour, contourDistance, wallLayer);
-        RaycastHit2D hitLeft = Physics2D.Raycast(transform.position, leftContour, contourDistance, wallLayer);
+        RaycastHit2D hitDireita = Physics2D.Raycast(transform.position, contornoDireita, distanciaCircundar, camadaObstaculo);
+        RaycastHit2D hitEsquerda = Physics2D.Raycast(transform.position, contornoEsquerda, distanciaCircundar, camadaObstaculo);
 
-        if (hitRight.collider != null && hitLeft.collider != null)
+        if (hitDireita.collider != null && hitEsquerda.collider != null)
         {
-            Vector2 directionAway = (hitRight.point - hitLeft.point).normalized;
-            physics.velocity = directionAway * maxSpeed;
+            Vector2 direcaoFuga = (hitDireita.point - hitEsquerda.point).normalized;
+            corpoFisico.velocity = direcaoFuga * velocidadeLimite;
         }
-        else if (hitRight.collider != null)
+        else if (hitDireita.collider != null)
         {
-            physics.velocity = leftContour.normalized * maxSpeed;
+            corpoFisico.velocity = contornoEsquerda.normalized * velocidadeLimite;
         }
-        else if (hitLeft.collider != null)
+        else if (hitEsquerda.collider != null)
         {
-            physics.velocity = rightContour.normalized * maxSpeed;
+            corpoFisico.velocity = contornoDireita.normalized * velocidadeLimite;
         }
     }
 
     void Awake()
     {
-        physics = GetComponent<Rigidbody2D>();
-        physics.isKinematic = false; 
-        behaviorDisplay = GetComponentInChildren<Text>();
+        corpoFisico = GetComponent<Rigidbody2D>();
+        corpoFisico.isKinematic = false;
+        exibicaoAcao = GetComponentInChildren<Text>();
     }
 
     void OnDrawGizmos()
     {
-        if (target == null)
+        if (objetivo == null)
         {
             return;
         }
 
-        switch (behavior)
+        switch (acao)
         {
-            case Behavior.Idle:
+            case Comportamento.Ocioso:
                 break;
-            case Behavior.Seek:
+            case Comportamento.Procurar:
                 Gizmos.color = Color.white;
-                Gizmos.DrawWireSphere(transform.position, arriveRadius);
+                Gizmos.DrawWireSphere(transform.position, raioChegada);
                 Gizmos.color = Color.green;
-                Gizmos.DrawWireSphere(transform.position, stopRadius);
+                Gizmos.DrawWireSphere(transform.position, raioParada);
                 break;
-            case Behavior.Evade:
+            case Comportamento.Fugir:
                 Gizmos.color = Color.red;
-                Gizmos.DrawWireSphere(transform.position, evadeRadius);
+                Gizmos.DrawWireSphere(transform.position, raioFuga);
                 break;
         }
 
         Gizmos.color = Color.gray;
-        Gizmos.DrawLine(transform.position, target.position);
+        Gizmos.DrawLine(transform.position, objetivo.position);
     }
 }
